@@ -1,4 +1,4 @@
-c# Burp Suite Data Leak Detection
+# Burp Suite Data Leak Detection - Backend Documentation
 
 ## Backend API Documentation
 
@@ -43,3 +43,36 @@ The backend server provides the following API endpoints:
   - `encoding` (string, required): `base64` or `url`.
   - `data` (string, required): The data to encode or decode.
 - **Description:** Encodes or decodes data using Base64 or URL encoding.
+
+## Running the Backend Server
+
+1. Install dependencies:
+
+```bash
+cd backend
+npm install
+```
+
+2. Start the server:
+
+```bash
+npm start
+```
+
+The server will run on port 5000.
+
+## Running Tests
+
+1. Install dev dependencies (if not already installed):
+
+```bash
+npm install
+```
+
+2. Run tests:
+
+```bash
+npm test
+```
+
+This will run the Jest test suite located in `backend/server.test.js`.
