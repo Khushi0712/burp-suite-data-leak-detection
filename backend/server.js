@@ -75,16 +75,46 @@ app.post('/spider',
 
 // Enhanced scanner to detect simple vulnerabilities (e.g., presence of SQL keywords, XSS, etc.)
 app.post('/scanner', 
-  body('url').isURL().withMessage('Valid URL is required'),
+  body('url').notEmpty().withMessage('URL is required'),
   async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
-    const { url } = req.body;
+    let { url } = req.body;
+    console.log('Received URL for scanning:', url);
     try {
-      const response = await axios.get(url);
-      const bodyContent = response.data.toLowerCase();
+      // Normalize URL to include scheme if missing
+      try {
+        url = url.trim();
+        if (!/^https?:\/\//i.test(url)) {
+          url = 'http://' + url;
+          console.log('Normalized URL with http:// scheme:', url);
+        }
+        // Validate URL by creating a new URL object
+        new URL(url);
+        console.log('URL validation passed:', url);
+      } catch (urlError) {
+        console.error('URL validation error:', urlError.message, 'URL:', url);
+        return res.status(400).json({ error: 'Invalid URL format' });
+      }
+      console.log('Scanner requesting URL:', url);
+      let response;
+      try {
+        console.log('Making axios.get request with URL:', url);
+        response = await axios.get(url);
+        console.log('Axios request successful for URL:', url);
+      } catch (axiosError) {
+        console.error('Axios request error:', axiosError.message, 'URL:', url);
+        return res.status(400).json({ error: 'Failed to fetch URL. Please check the URL format and availability.' });
+      }
+      let bodyContent = '';
+      if (typeof response.data === 'string') {
+        bodyContent = response.data.toLowerCase();
+      } else if (typeof response.data === 'object') {
+        bodyContent = JSON.stringify(response.data).toLowerCase();
+      }
       const vulnerabilities = [];
       // Enhanced detection rules
       if (bodyContent.includes('select ') || bodyContent.includes('insert ') || bodyContent.includes('update ') || bodyContent.includes('delete ')) {
@@ -101,22 +131,34 @@ app.post('/scanner',
       }
       res.json({ vulnerabilities });
     } catch (error) {
-      next(error);
+      console.error('Unexpected error in scanner endpoint:', error);
+      if (error instanceof TypeError && error.message.includes('Invalid URL')) {
+        return res.status(400).json({ error: 'Invalid URL format detected in scanner endpoint' });
+      }
+      return res.status(500).json({ error: 'Internal Server Error in scanner endpoint' });
     }
   }
 );
 
 // Repeater endpoint to send custom HTTP requests
 app.post('/repeater', 
-  body('method').isString().withMessage('Method is required'),
-  body('url').isURL().withMessage('Valid URL is required'),
+  body('method').notEmpty().withMessage('Method is required'),
+  body('url').notEmpty().withMessage('URL is required'),
   async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.log('Validation errors:', errors.array());
+      // Temporarily return validation errors in response for debugging
+      return res.status(400).json({ error: 'Validation failed', details: errors.array() });
     }
-    const { method, url, headers, body: requestBody } = req.body;
+    let { method, url, headers, body: requestBody } = req.body;
     try {
+      // Normalize method to lowercase for axios
+      method = method.toLowerCase();
+      // If body is null or empty string, set to undefined to avoid axios errors
+      if (requestBody === null || requestBody === '') {
+        requestBody = undefined;
+      }
       const response = await axios({
         method,
         url,

@@ -63,11 +63,15 @@ function App() {
   const handleRepeater = async () => {
     try {
       const headers = repeaterRequest.headers ? JSON.parse(repeaterRequest.headers) : {};
+      let body = repeaterRequest.body;
+      if (body === '' || body === 'null') {
+        body = undefined;
+      }
       const response = await axios.post('http://localhost:5000/repeater', {
         method: repeaterRequest.method,
         url: repeaterRequest.url,
         headers,
-        body: repeaterRequest.body
+        body
       });
       setRepeaterResponse(response.data);
     } catch (error) {
